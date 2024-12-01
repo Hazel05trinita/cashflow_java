@@ -1,0 +1,723 @@
+package salarymanagement;
+import java.awt.*;
+import java.sql.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import javax.swing.*;
+
+
+// class1 Abstract class for basic transaction behavior
+abstract class Transaction {
+ protected double amount;
+ protected String reason;
+ protected Date date;
+
+
+ public Transaction(double amount, String reason) {
+ this.amount = amount;
+ this.reason = reason;
+ this.date = new Date(); // Default to current date
+ }
+
+
+ public abstract void execute();
+ public double getAmount() {
+ return amount;
+ }
+
+ public String getReason() {
+ return reason;
+
+ }
+
+ public Date getDate() {
+ return date;
+ }
+
+}
+
+
+// Class2 for cash in transactions
+
+class CashInTransaction extends Transaction {
+ public CashInTransaction(double amount, String reason) {
+ super(amount, reason);
+ }
+
+ @Override
+ public void execute() {
+ // Logic for executing cash in can be extended here
+ }
+}
+
+
+// Class3 for cash out transactions
+class CashOutTransaction extends Transaction {
+ public CashOutTransaction(double amount, String reason) {
+ super(amount, reason);
+ }
+
+
+ @Override
+ public void execute() {
+ // Logic for executing cash out can be extended here
+ }
+}
+
+// class 4 Main class for the Budget Tracker App
+public class SalaryManagementSystem {
+    private double totalCash = 0.00;
+    private DefaultListModel<String> transactionListModel;
+    private JLabel presentAmountLabel;
+    private JList<String> transactionList;
+    private JTextField amountField;
+    private JTextField reasonField;
+    private JComboBox<String> calendarDropdown;  // Calendar Dropdown
+    private Connection connection;
+
+    public SalaryManagementSystem() {
+        showLoginScreen();
+    }
+
+
+
+ private void showLoginScreen() {
+
+ JFrame loginFrame = new JFrame("Login");
+
+ loginFrame.setSize(500, 500);
+
+ loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+ loginFrame.setLayout(new GridBagLayout());
+
+ loginFrame.getContentPane().setBackground(Color.CYAN); // Set background color to cyan
+
+ GridBagConstraints gbc = new GridBagConstraints();
+
+ gbc.insets = new Insets(5, 5, 5, 5); // Adds padding around components
+
+
+
+ // Add image to the login page
+
+ JLabel imageLabel = new JLabel();
+
+ ImageIcon icon = new ImageIcon("C:\\Users\\Andral\\OneDrive\\Pictures\\Screenshots\\user2.png"); // Replace with your image path
+
+ Image img = icon.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH); // Scale the image
+
+ imageLabel.setIcon(new ImageIcon(img));
+
+ gbc.gridx = 0;
+
+ gbc.gridy = 0;
+
+ gbc.gridwidth = 2; // Span the image across two columns
+
+ loginFrame.add(imageLabel, gbc);
+
+
+
+ // Username label and field
+
+ gbc.gridwidth = 1; // Reset to 1 column width
+
+ gbc.gridx = 0;
+
+ gbc.gridy = 1;
+
+ loginFrame.add(new JLabel("Username:"), gbc);
+
+
+
+ JTextField usernameField = new JTextField(15);
+
+ gbc.gridx = 1;
+
+ loginFrame.add(usernameField, gbc);
+
+
+
+ // Add a gap between Username and Password
+
+ gbc.gridy = 1;
+
+ gbc.gridx = 0;
+
+ gbc.gridwidth = 2;
+
+ gbc.insets = new Insets(10, 0, 10, 0); // Creates vertical space (gap)
+
+ loginFrame.add(new JLabel(" "), gbc); // Empty label for spacing
+
+
+
+ gbc.insets = new Insets(5, 5, 5, 5); // Reset padding
+
+
+
+ // Password label and field
+
+ gbc.gridy = 3;
+
+ gbc.gridx = 0;
+
+ gbc.gridwidth = 1;
+
+ loginFrame.add(new JLabel("Password:"), gbc);
+
+
+
+ JPasswordField passwordField = new JPasswordField(15);
+
+ gbc.gridx = 1;
+
+ loginFrame.add(passwordField, gbc);
+
+
+
+ // Login button
+
+ JButton loginButton = new JButton("Login");
+
+ gbc.gridx = 0;
+
+ gbc.gridy = 4;
+
+ gbc.gridwidth = 2;
+
+ loginButton.addActionListener(e -> {
+
+ String username = usernameField.getText();
+
+ String password = new String(passwordField.getPassword());
+
+
+
+ if (validateLogin(username, password)) {
+
+ loginFrame.dispose(); // Close login window
+
+ setupUI(); // Proceed to the main budget tracker UI
+
+ } else {
+
+ JOptionPane.showMessageDialog(loginFrame, "Invalid credentials. Please try again.");
+
+ }
+
+ });
+
+ loginFrame.add(loginButton, gbc);
+
+
+
+ loginFrame.setVisible(true);
+
+ }
+
+ 
+
+
+
+ private boolean validateLogin(String username, String password) {
+
+ // Simple login validation logic. You can add database checks if required.
+
+ return username.equals("admin") && password.equals("password");
+
+ }
+
+
+
+ private void setupUI() {
+     // Setup JFrame for the Budget Tracker
+     JFrame frame = new JFrame("Budget Tracker");
+     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+     frame.setSize(500, 500);
+     frame.getContentPane().setBackground(Color.CYAN);
+     frame.setLayout(new GridBagLayout());
+     GridBagConstraints gbc = new GridBagConstraints();
+     gbc.fill = GridBagConstraints.HORIZONTAL;
+
+     // Tax Estimation Tool Button
+     JButton taxEstimationButton = new JButton("Tax Estimation Tool");
+     taxEstimationButton.setPreferredSize(new Dimension(200, 30));
+     taxEstimationButton.addActionListener(e -> openTaxEstimationTool());
+     gbc.gridx = 0;
+     gbc.gridy = 0; // Place it at the top
+     gbc.gridwidth = 2; // Span across two columns
+     frame.add(taxEstimationButton, gbc);
+
+     // Calendar Dropdown to filter transactions by date
+     calendarDropdown = new JComboBox<>();
+     calendarDropdown.addItem("All");  // Option to show all transactions
+     calendarDropdown.addActionListener(e -> filterTransactionsByDate());
+     gbc.gridx = 0;
+     gbc.gridy = 1;
+     gbc.gridwidth = 2;
+     frame.add(new JLabel("Filter by Date:"), gbc);
+     gbc.gridy = 2;
+     frame.add(calendarDropdown, gbc);
+
+     // Amount Label and Input
+     gbc.gridx = 0;
+     gbc.gridy = 3;
+     gbc.gridwidth = 1;
+     frame.add(new JLabel("Enter Amount:"), gbc);
+
+     amountField = new JTextField(20);
+     amountField.setPreferredSize(new Dimension(200, 30));
+     gbc.gridx = 1;
+     frame.add(amountField, gbc);
+
+     // Reason Label and Input
+     gbc.gridx = 0;
+     gbc.gridy = 4;
+     frame.add(new JLabel("Enter Reason:"), gbc);
+
+     reasonField = new JTextField(20);
+     reasonField.setPreferredSize(new Dimension(200, 30));
+     gbc.gridx = 1;
+     frame.add(reasonField, gbc);
+
+     // Cash In Button
+     JButton cashInButton = new JButton("Cash In");
+     cashInButton.setPreferredSize(new Dimension(100, 30));
+     cashInButton.addActionListener(e -> processTransaction(true));
+     gbc.gridx = 0;
+     gbc.gridy = 5;
+     frame.add(cashInButton, gbc);
+
+     // Cash Out Button
+     JButton cashOutButton = new JButton("Cash Out");
+     cashOutButton.setPreferredSize(new Dimension(100, 30));
+     cashOutButton.addActionListener(e -> processTransaction(false));
+     gbc.gridx = 1;
+     frame.add(cashOutButton, gbc);
+
+     // Transaction History List
+     transactionListModel = new DefaultListModel<>();
+     transactionList = new JList<>(transactionListModel);
+     JScrollPane scrollPane = new JScrollPane(transactionList);
+     scrollPane.setPreferredSize(new Dimension(400, 200));
+     gbc.gridx = 0;
+     gbc.gridy = 6;
+     gbc.gridwidth = 2;
+     frame.add(scrollPane, gbc);
+
+     // Present Amount Label
+     presentAmountLabel = new JLabel("Present Amount: ₹ 0.00");
+     gbc.gridx = 0;
+     gbc.gridy = 7;
+     gbc.gridwidth = 2;
+     presentAmountLabel.setForeground(Color.RED);
+     frame.add(presentAmountLabel, gbc);
+
+     // Delete Button
+     JButton deleteButton = new JButton("Delete Transaction");
+     deleteButton.setPreferredSize(new Dimension(150, 30));
+     deleteButton.addActionListener(e -> deleteTransaction());
+     gbc.gridx = 0;
+     gbc.gridy = 8;
+     gbc.gridwidth = 2;
+     frame.add(deleteButton, gbc);
+
+     // Make the frame visible at the end
+     frame.setVisible(true);
+
+     connectToDatabase(); // Connect to the database after showing the UI
+     loadUniqueDates();   // Load the dates into the dropdown
+ }
+
+ private void loadUniqueDates() {
+     String query = "SELECT DISTINCT DATE(date) AS date FROM transactions";
+     try (Statement stmt = connection.createStatement();
+          ResultSet rs = stmt.executeQuery(query)) {
+         while (rs.next()) {
+             String date = new SimpleDateFormat("yyyy-MM-dd").format(rs.getDate("date"));
+             calendarDropdown.addItem(date);
+         }
+     } catch (SQLException e) {
+         e.printStackTrace();
+     }
+ }
+
+ private void filterTransactionsByDate() {
+     transactionListModel.clear();
+     String selectedDate = (String) calendarDropdown.getSelectedItem();
+     String query = "SELECT * FROM transactions";
+     if (!"All".equals(selectedDate)) {
+         query += " WHERE DATE(date) = ?";
+     }
+
+     try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+         if (!"All".equals(selectedDate)) {
+             pstmt.setString(1, selectedDate);
+         }
+
+         try (ResultSet rs = pstmt.executeQuery()) {
+             while (rs.next()) {
+                 String transaction = "Amount: ₹ " + rs.getDouble("amount") + ", Reason: " + rs.getString("reason") + ", Date: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(rs.getTimestamp("date"));
+                 transactionListModel.addElement(transaction);
+             }
+         }
+     } catch (SQLException e) {
+         e.printStackTrace();
+     }
+ }
+
+
+
+ private void openTaxEstimationTool() {
+
+ // Create a new dialog for tax estimation
+
+ JDialog dialog = new JDialog();
+
+ dialog.setTitle("Tax Estimation Tool");
+
+ dialog.setSize(300, 200);
+
+ dialog.setModal(true);
+
+ dialog.setLayout(new GridBagLayout());
+
+ 
+
+ // Add labels and fields for salary and deductions
+
+ GridBagConstraints gbc = new GridBagConstraints();
+
+ gbc.insets = new Insets(5, 5, 5, 5); // Padding around components
+
+ 
+
+ // Salary Label
+
+ gbc.gridx = 0; // First column
+
+ gbc.gridy = 0; // First row
+
+ gbc.anchor = GridBagConstraints.EAST; // Align to the right of the grid cell
+
+ dialog.add(new JLabel("Enter Salary:"), gbc);
+
+ 
+
+ // Salary Text Field
+
+ JTextField salaryField = new JTextField(15);
+
+ gbc.gridx = 1; // Second column
+
+ gbc.anchor = GridBagConstraints.WEST; // Align to the left of the grid cell
+
+ dialog.add(salaryField, gbc);
+
+ 
+
+ // Deductions Label
+
+ gbc.gridx = 0; // First column
+
+ gbc.gridy = 1; // Second row
+
+ gbc.anchor = GridBagConstraints.EAST;
+
+ dialog.add(new JLabel("Enter Deductions:"), gbc);
+
+ 
+
+ // Deductions Text Field
+
+ JTextField deductionsField = new JTextField(15);
+
+ gbc.gridx = 1; // Second column
+
+ gbc.anchor = GridBagConstraints.WEST;
+
+ dialog.add(deductionsField, gbc);
+
+ 
+
+ // Add Estimate button
+
+ JButton estimateButton = new JButton("Estimate Tax");
+
+ gbc.gridx = 0;
+
+ gbc.gridy = 2;
+
+ gbc.gridwidth = 2; // Span the button across two columns
+
+ gbc.anchor = GridBagConstraints.CENTER; // Center the button
+
+ dialog.add(estimateButton, gbc);
+
+ 
+
+ // Action listener for tax estimation
+
+ estimateButton.addActionListener(e -> {
+
+ try {
+
+ double salary = Double.parseDouble(salaryField.getText());
+
+ double deductions = Double.parseDouble(deductionsField.getText());
+
+ double taxEstimate = calculateTax(salary, deductions);
+
+ JOptionPane.showMessageDialog(dialog, "Estimated Tax: ₹ " + taxEstimate);
+
+ } catch (NumberFormatException ex) {
+
+ JOptionPane.showMessageDialog(dialog, "Please enter valid numbers for salary and deductions.", "Input Error", JOptionPane.ERROR_MESSAGE);
+
+ }
+
+ });
+
+ 
+
+ dialog.setVisible(true);
+
+ }
+
+ 
+
+
+
+ private double calculateTax(double salary, double deductions) {
+
+ double taxableIncome = salary - deductions;
+
+ double taxRate = 0.2; // Assuming a flat tax rate of 20% for simplicity
+
+ return taxableIncome > 0 ? taxableIncome * taxRate : 0;
+
+ }
+
+
+
+ private void connectToDatabase() {
+
+ // Database connection logic (add your connection code here)
+
+ try {
+
+ Class.forName("com.mysql.cj.jdbc.Driver"); // Make sure to include MySQL Connector/J in your build path
+
+ connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/account", "root", "andral2005");
+
+ createTableIfNotExists();
+
+ loadInitialData();
+
+ } catch (Exception e) {
+
+ e.printStackTrace();
+
+ JOptionPane.showMessageDialog(null, "Error connecting to the database: " + e.getMessage());
+
+ }
+
+ }
+
+
+
+ private void createTableIfNotExists() {
+
+ // Create table if it doesn't exist
+
+ String createTableSQL = "CREATE TABLE IF NOT EXISTS transactions (" +
+
+ "id INT AUTO_INCREMENT PRIMARY KEY," +
+
+ "amount DOUBLE NOT NULL," +
+
+ "reason VARCHAR(255) NOT NULL," +
+
+ "date TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+
+ ")";
+
+ try (Statement stmt = connection.createStatement()) {
+
+ stmt.execute(createTableSQL);
+
+ } catch (SQLException e) {
+
+ e.printStackTrace();
+
+ }
+
+ }
+
+
+
+ private void loadInitialData() {
+
+ // Load initial data from the database to the transaction list
+
+ String query = "SELECT * FROM transactions";
+
+ try (Statement stmt = connection.createStatement();
+
+ ResultSet rs = stmt.executeQuery(query)) {
+
+ while (rs.next()) {
+
+ String transaction = "Amount: ₹ " + rs.getDouble("amount") + ", Reason: " + rs.getString("reason") + ", Date: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(rs.getTimestamp("date"));
+
+ transactionListModel.addElement(transaction);
+
+ totalCash += rs.getDouble("amount");
+
+ }
+
+ presentAmountLabel.setText("Present Amount: ₹ " + totalCash);
+
+ } catch (SQLException e) {
+
+ e.printStackTrace();
+
+ }
+
+ }
+
+
+
+ private void processTransaction(boolean isCashIn) {
+
+ double amount;
+
+ String reason = reasonField.getText();
+
+
+
+ try {
+
+ amount = Double.parseDouble(amountField.getText());
+
+ Transaction transaction;
+
+
+
+ if (isCashIn) {
+
+ transaction = new CashInTransaction(amount, reason);
+
+ totalCash += amount; // Update total cash
+
+ } else {
+
+ transaction = new CashOutTransaction(amount, reason);
+
+ totalCash -= amount; // Update total cash
+
+ }
+
+
+
+ transaction.execute(); // Execute the transaction
+
+ saveTransactionToDatabase(transaction); // Save to database
+
+
+
+ transactionListModel.addElement(transaction.getReason() + ": ₹ " + transaction.getAmount() + " on " + new SimpleDateFormat("yyyy-MM-dd").format(transaction.getDate()));
+
+ presentAmountLabel.setText("Present Amount: ₹ " + totalCash);
+
+
+
+ amountField.setText(""); // Clear the amount field
+
+ reasonField.setText(""); // Clear the reason field
+
+ } catch (NumberFormatException e) {
+
+ JOptionPane.showMessageDialog(null, "Please enter a valid amount.");
+
+ }
+
+ }
+
+
+
+ private void saveTransactionToDatabase(Transaction transaction) {
+
+ // Save transaction to the database
+
+ String insertSQL = "INSERT INTO transactions (amount, reason) VALUES (?, ?)";
+
+ try (PreparedStatement pstmt = connection.prepareStatement(insertSQL)) {
+
+ pstmt.setDouble(1, transaction.getAmount());
+
+ pstmt.setString(2, transaction.getReason());
+
+ pstmt.executeUpdate();
+
+ } catch (SQLException e) {
+
+ e.printStackTrace();
+
+ }
+
+ }
+
+
+
+ private void deleteTransaction() {
+	    int selectedIndex = transactionList.getSelectedIndex();
+	    if (selectedIndex != -1) {
+	        // Get the selected transaction entry from the list model
+	        String transactionEntry = transactionListModel.get(selectedIndex);
+
+	        // Parse the entry to get the transaction amount and reason
+	        String[] parts = transactionEntry.split(", ");
+	        String amountString = parts[0].replace("Amount: ₹ ", "").trim();
+	        String reason = parts[1].replace("Reason: ", "").trim();
+
+	        try {
+	            double amount = Double.parseDouble(amountString); // Extract the amount
+
+	            // Update the total cash based on whether it's a cash-in or cash-out transaction
+	            totalCash -= amount;
+	            presentAmountLabel.setText("Present Amount: ₹ " + totalCash);
+
+	            // Remove the transaction from the list model
+	            transactionListModel.remove(selectedIndex);
+
+	            // Remove the transaction from the database
+	            deleteTransactionFromDatabase(amount, reason);
+
+	            JOptionPane.showMessageDialog(null, "Transaction deleted successfully.");
+	        } catch (NumberFormatException e) {
+	            JOptionPane.showMessageDialog(null, "Error parsing the transaction amount.");
+	        }
+	    } else {
+	        JOptionPane.showMessageDialog(null, "Please select a transaction to delete.");
+	    }
+	}
+
+
+
+ private void deleteTransactionFromDatabase(double amount, String reason) {
+	// TODO Auto-generated method stub
+	
+}
+
+
+
+public static void main(String[] args) {
+
+ SwingUtilities.invokeLater(SalaryManagementSystem::new);
+
+ }
+
+}
